@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bilingual Meeting Copilot V0.1 Design Options</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f7f9;
+        --panel: #ffffff;
+        --ink: #1e2633;
+        --muted: #637083;
+        --line: #d9e0e8;
+        --accent: #13715b;
+        --accent-soft: #e3f4ef;
+        --warn: #a45f00;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Arial, sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+      }
+
+      header {
+        padding: 28px 36px 18px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        margin-bottom: 8px;
+        font-size: 28px;
+      }
+
+      h2 {
+        font-size: 20px;
+        margin-bottom: 14px;
+      }
+
+      h3 {
+        font-size: 16px;
+        margin-bottom: 8px;
+      }
+
+      main {
+        padding: 24px 36px 40px;
+        display: grid;
+        gap: 24px;
+      }
+
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 22px;
+      }
+
+      .subtitle {
+        color: var(--muted);
+        max-width: 980px;
+        line-height: 1.55;
+      }
+
+      .options {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .option {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px;
+        background: #fbfcfd;
+      }
+
+      .option.recommended {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+      }
+
+      .tag {
+        display: inline-block;
+        margin-bottom: 10px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--accent);
+        background: #ffffff;
+        border: 1px solid #b9ded3;
+      }
+
+      ul {
+        margin: 8px 0 0;
+        padding-left: 18px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .mockup {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        background: #fdfefe;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
+        background: #eef2f5;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .brand {
+        font-weight: 700;
+      }
+
+      .toolbar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        border: 1px solid #c9d3dd;
+        border-radius: 6px;
+        background: #fff;
+        padding: 7px 10px;
+        font-size: 13px;
+      }
+
+      .btn.primary {
+        color: #fff;
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        min-height: 420px;
+      }
+
+      .pane {
+        padding: 16px;
+      }
+
+      .pane + .pane {
+        border-left: 1px solid var(--line);
+      }
+
+      .pane-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .segment,
+      .result-block {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 10px;
+        background: #fff;
+      }
+
+      .segment.pending {
+        border-color: #d7b56d;
+        background: #fff9ec;
+      }
+
+      .meta {
+        color: var(--muted);
+        font-size: 12px;
+        margin-bottom: 6px;
+      }
+
+      .en {
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+
+      .cn {
+        color: var(--muted);
+      }
+
+      .divider {
+        margin: 10px 0;
+        color: var(--warn);
+        font-size: 12px;
+        text-align: center;
+      }
+
+      .input-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      textarea,
+      input {
+        width: 100%;
+        border: 1px solid #c9d3dd;
+        border-radius: 6px;
+        padding: 9px 10px;
+        font: inherit;
+        resize: vertical;
+      }
+
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .step {
+        min-height: 80px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fbfcfd;
+      }
+
+      .step strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      @media (max-width: 900px) {
+        header,
+        main {
+          padding-left: 18px;
+          padding-right: 18px;
+        }
+
+        .options,
+        .flow,
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+
+        .pane + .pane {
+          border-left: 0;
+          border-top: 1px solid var(--line);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Bilingual Meeting Copilot V0.1</h1>
+      <p class="subtitle">
+        第一版聚焦 PRD 里程碑 21.1：可演示、可见、可测试。通过手动输入会议英文模拟实时转写，完成字幕缓存、知识库检索、主动触发 AI 回复、右侧双语建议的闭环。
+      </p>
+    </header>
+
+    <main>
+      <section>
+        <h2>实现路径选择</h2>
+        <div class="options">
+          <div class="option recommended">
+            <span class="tag">推荐</span>
+            <h3>A. Web MVP + 本地后端</h3>
+            <p>用 React/Vite 做可见前端，用 FastAPI 做本地服务，保留 Electron 接入边界。</p>
+            <ul>
+              <li>最快形成可演示页面</li>
+              <li>后端模块边界清楚，便于后续接音频和 Electron</li>
+              <li>不用先解决桌面打包和系统音频权限</li>
+            </ul>
+          </div>
+          <div class="option">
+            <h3>B. Electron 一步到位</h3>
+            <p>直接搭 Electron + React + Python 服务，贴近最终 PRD 形态。</p>
+            <ul>
+              <li>架构更接近桌面产品</li>
+              <li>首版依赖和调试复杂度更高</li>
+              <li>音频权限和打包会拖慢 MVP</li>
+            </ul>
+          </div>
+          <div class="option">
+            <h3>C. 纯前端演示原型</h3>
+            <p>只做浏览器页面和 mock 数据，后端后续再补。</p>
+            <ul>
+              <li>界面最快可见</li>
+              <li>无法验证知识库和上下文真实逻辑</li>
+              <li>安全边界和 API Key 管理不足</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>推荐 V0.1 页面布局</h2>
+        <div class="mockup">
+          <div class="topbar">
+            <div class="brand">Meeting Help · Demo Meeting</div>
+            <div class="toolbar">
+              <button class="btn">New</button>
+              <button class="btn">Pause</button>
+              <button class="btn">Upload KB</button>
+              <button class="btn primary">Generate Reply</button>
+            </div>
+          </div>
+          <div class="workspace">
+            <div class="pane">
+              <div class="pane-title">
+                <span>Bilingual Transcript</span>
+                <span>Ctrl + Space</span>
+              </div>
+              <div class="segment">
+                <div class="meta">Other / 00:01:12 / submitted</div>
+                <div class="en">We need to clarify whether this feature should be included in the MVP.</div>
+                <div class="cn">我们需要明确这个功能是否应该纳入 MVP。</div>
+              </div>
+              <div class="divider">Submitted to AI</div>
+              <div class="segment pending">
+                <div class="meta">Other / 00:02:05 / pending</div>
+                <div class="en">The client is concerned that the workflow may be too complex for first-time users.</div>
+                <div class="cn">客户担心当前流程对新用户来说可能过于复杂。</div>
+              </div>
+              <div class="input-row">
+                <textarea rows="3" placeholder="Paste or type English meeting content for V0.1 demo"></textarea>
+                <button class="btn primary">Add Segment</button>
+              </div>
+            </div>
+            <div class="pane">
+              <div class="pane-title">
+                <span>AI Reply Suggestion</span>
+                <span>Knowledge: 2 hits</span>
+              </div>
+              <div class="result-block">
+                <div class="meta">Intent</div>
+                <div>risk_or_issue · response recommended</div>
+              </div>
+              <div class="result-block">
+                <div class="meta">中文理解</div>
+                <div>对方提出客户担心当前流程对首次使用者过于复杂。</div>
+              </div>
+              <div class="result-block">
+                <div class="meta">English ready to say</div>
+                <div class="en">That is a valid concern. We can simplify the first-time user flow by reducing required steps and adding clearer onboarding guidance.</div>
+                <button class="btn">Copy English</button>
+              </div>
+              <div class="result-block">
+                <div class="meta">Knowledge Sources</div>
+                <div>PRD_v1.md / User Experience Goals</div>
+              </div>
+              <div class="input-row">
+                <input placeholder="Manual follow-up, e.g. make it more polite">
+                <button class="btn">Ask</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>模块边界</h2>
+        <div class="flow">
+          <div class="step">
+            <strong>Frontend</strong>
+            React UI, visible panes, hotkey handler, upload controls.
+          </div>
+          <div class="step">
+            <strong>API Layer</strong>
+            FastAPI endpoints, validation, CORS restricted to local dev origins.
+          </div>
+          <div class="step">
+            <strong>Meeting Core</strong>
+            Segment buffer, submitted marker, meeting summary, turn history.
+          </div>
+          <div class="step">
+            <strong>Knowledge Core</strong>
+            Local file parsing, chunking, lexical MVP search, source display.
+          </div>
+          <div class="step">
+            <strong>AI Core</strong>
+            Prompt assembly, safe fallback reply, optional OpenAI API key from env only.
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
