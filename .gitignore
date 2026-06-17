@@ -2,11 +2,14 @@
 node_modules/
 venv/
 .venv/
+__pycache__/
+.pytest_cache/
 
 # Build outputs
 dist/
 build/
 out/
+frontend/dist/
 
 # Generated local analysis files
 prd_extracted.txt
@@ -15,6 +18,11 @@ prd_extracted.txt
 .env
 .env.*
 !.env.example
+
+# Local runtime data
+*.db
+*.sqlite
+*.log
 
 # Editor and OS files
 .DS_Store
