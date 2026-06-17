@@ -3,6 +3,7 @@ import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { api } from "./api";
 import { labels } from "./i18n";
 import type { KnowledgeChunk, Lang, Meeting, Reply, Segment } from "./types";
+import { canAddSegment, connectionErrorMessage } from "./uiState";
 
 function App() {
   const [lang, setLang] = useState<Lang>("zh");
@@ -22,8 +23,8 @@ function App() {
   );
 
   useEffect(() => {
-    api.currentMeeting().then(setMeeting).catch((err) => setError(err.message));
-  }, []);
+    api.currentMeeting().then(setMeeting).catch((err) => setError(connectionErrorMessage(err.message, t.backendUnavailable)));
+  }, [t.backendUnavailable]);
 
   async function run(action: () => Promise<void>) {
     setBusy(true);
@@ -31,7 +32,7 @@ function App() {
     try {
       await action();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(connectionErrorMessage(err instanceof Error ? err.message : String(err), t.backendUnavailable));
     } finally {
       setBusy(false);
     }
@@ -66,7 +67,11 @@ function App() {
   }
 
   async function addSegment() {
-    if (!meeting || !textEn.trim()) return;
+    if (!meeting) {
+      setError(t.backendUnavailable);
+      return;
+    }
+    if (!textEn.trim()) return;
     await run(async () => {
       const segment = await api.addSegment(meeting.id, textEn, speaker);
       setMeeting({ ...meeting, segments: [...meeting.segments, segment] });
@@ -183,7 +188,12 @@ function App() {
               rows={4}
               placeholder={t.inputPlaceholder}
             />
-            <button className="primary" onClick={addSegment} disabled={busy || !textEn.trim()}>
+            <button
+              className="primary"
+              onClick={addSegment}
+              disabled={!canAddSegment({ busy, meetingLoaded: Boolean(meeting), text: textEn })}
+              title={!meeting ? t.backendUnavailable : undefined}
+            >
               <Plus size={16} /> {t.addSegment}
             </button>
           </div>
@@ -271,4 +281,3 @@ function formatTime(seconds: number) {
 }
 
 export default App;
-

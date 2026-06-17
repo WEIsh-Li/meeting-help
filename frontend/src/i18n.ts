@@ -41,6 +41,7 @@ export const labels = {
     language: "English",
     kbLoaded: "知识库已加载",
     error: "错误",
+    backendUnavailable: "后端未连接：请先启动 FastAPI 服务并刷新页面。",
     followUpDisabled: "手动追问将在后续版本启用",
     fileUnsupported: "V0.1 支持 .txt 和 .md 文件"
   },
@@ -84,8 +85,8 @@ export const labels = {
     language: "中文",
     kbLoaded: "Knowledge loaded",
     error: "Error",
+    backendUnavailable: "Backend is not connected. Start the FastAPI service and refresh the page.",
     followUpDisabled: "Manual follow-up will be enabled in a later version",
     fileUnsupported: "V0.1 supports .txt and .md files"
   }
 } satisfies Record<Lang, Record<string, string>>;
-
