@@ -1,10 +1,11 @@
-import type { KnowledgeChunk, Meeting, Reply, Segment } from "./types";
+import type { KnowledgeChunk, Meeting, Reply, Segment, TranscriptionResult } from "./types";
 
 const API_BASE = "";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const isFormData = options?.body instanceof FormData;
   const response = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
+    headers: { ...(isFormData ? {} : { "Content-Type": "application/json" }), ...(options?.headers ?? {}) },
     ...options
   });
   if (!response.ok) {
@@ -39,10 +40,18 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ filename, content })
     }),
+  transcribeAudio: (meetingId: string, file: File) => {
+    const form = new FormData();
+    form.append("meeting_id", meetingId);
+    form.append("file", file);
+    return request<TranscriptionResult>("/api/speech/transcribe", {
+      method: "POST",
+      body: form
+    });
+  },
   generateReply: (meetingId: string) =>
     request<{ reply: Reply; submitted_segment_ids: string[]; meeting: Meeting }>("/api/ai/generate-reply", {
       method: "POST",
       body: JSON.stringify({ meeting_id: meetingId })
     })
 };
-

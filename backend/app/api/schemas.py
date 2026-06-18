@@ -44,6 +44,12 @@ class MeetingResponse(BaseModel):
     ended_at: str | None
 
 
+class TranscriptionResponse(BaseModel):
+    transcript_en: str
+    segment: SegmentResponse
+    meeting: MeetingResponse
+
+
 class CreateMeetingRequest(BaseModel):
     title: str = Field(default="Demo Meeting", max_length=120)
 
@@ -79,4 +85,3 @@ class GenerateReplyResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str
-

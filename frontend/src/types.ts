@@ -44,3 +44,8 @@ export interface Reply {
   confidence: string;
 }
 
+export interface TranscriptionResult {
+  transcript_en: string;
+  segment: Segment;
+  meeting: Meeting;
+}

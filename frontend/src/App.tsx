@@ -1,9 +1,9 @@
-import { Clipboard, FileText, Globe2, Pause, Play, Plus, RotateCcw, Send, Trash2, Upload } from "lucide-react";
+import { Clipboard, FileText, Globe2, Mic, Pause, Play, Plus, RotateCcw, Send, Trash2, Upload } from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { api } from "./api";
 import { labels } from "./i18n";
 import type { KnowledgeChunk, Lang, Meeting, Reply, Segment } from "./types";
-import { canAddSegment, connectionErrorMessage } from "./uiState";
+import { canAddSegment, canUploadAudio, connectionErrorMessage } from "./uiState";
 
 function App() {
   const [lang, setLang] = useState<Lang>("zh");
@@ -32,7 +32,8 @@ function App() {
     try {
       await action();
     } catch (err) {
-      setError(connectionErrorMessage(err instanceof Error ? err.message : String(err), t.backendUnavailable));
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message.includes("faster-whisper") ? t.speechUnavailable : connectionErrorMessage(message, t.backendUnavailable));
     } finally {
       setBusy(false);
     }
@@ -94,6 +95,23 @@ function App() {
     });
   }
 
+  async function uploadAudio(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!canUploadAudio({ busy, meetingLoaded: Boolean(meeting), hasFile: Boolean(file) })) {
+      if (!meeting) setError(t.backendUnavailable);
+      return;
+    }
+    if (!file?.type.startsWith("audio/")) {
+      setError(t.audioUnsupported);
+      return;
+    }
+    await run(async () => {
+      const result = await api.transcribeAudio(meeting!.id, file);
+      setMeeting(result.meeting);
+    });
+  }
+
   async function generateReply() {
     if (!meeting) return;
     await run(async () => {
@@ -143,6 +161,10 @@ function App() {
           <label className="upload-button">
             <Upload size={16} /> {t.uploadKb}
             <input type="file" accept=".txt,.md" onChange={uploadKnowledge} />
+          </label>
+          <label className={`upload-button ${busy || !meeting ? "disabled" : ""}`} title={!meeting ? t.backendUnavailable : undefined}>
+            <Mic size={16} /> {t.uploadAudio}
+            <input type="file" accept="audio/*" disabled={busy || !meeting} onChange={uploadAudio} />
           </label>
           <button className="primary" onClick={generateReply} disabled={busy || !meeting || pendingCount === 0}>
             <Send size={16} /> {t.generate}

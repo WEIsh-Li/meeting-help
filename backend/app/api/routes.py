@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from pathlib import Path
+from tempfile import NamedTemporaryFile
+
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from app.api.schemas import (
     AddSegmentRequest,
@@ -11,18 +14,21 @@ from app.api.schemas import (
     MeetingResponse,
     ReplyResponse,
     SegmentResponse,
+    TranscriptionResponse,
     UploadKnowledgeRequest,
 )
 from app.domain.knowledge_service import KnowledgeService
 from app.domain.meeting_service import MeetingService
 from app.domain.models import KnowledgeUse, Meeting, Reply, Segment
 from app.domain.reply_service import ReplyService
+from app.domain.speech_service import SpeechService, SpeechUnavailableError
 
 
 router = APIRouter(prefix="/api")
 meeting_service = MeetingService()
 knowledge_service = KnowledgeService()
 reply_service = ReplyService()
+speech_service = SpeechService()
 
 
 @router.get("/health")
@@ -67,6 +73,31 @@ def add_segment(request: AddSegmentRequest) -> SegmentResponse:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return segment_to_response(segment)
+
+
+@router.post("/speech/transcribe", response_model=TranscriptionResponse)
+async def transcribe_audio(meeting_id: str = Form(...), file: UploadFile = File(...)) -> TranscriptionResponse:
+    suffix = Path(file.filename or "audio").suffix or ".wav"
+    temp_path: Path | None = None
+    try:
+        with NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+            temp_path = Path(temp_file.name)
+            temp_file.write(await file.read())
+
+        transcript = speech_service.transcribe(temp_path)
+        segment = meeting_service.add_segment(meeting_id, transcript, "Audio", source="system_audio")
+        return TranscriptionResponse(
+            transcript_en=transcript,
+            segment=segment_to_response(segment),
+            meeting=meeting_to_response(meeting_service.get_meeting(meeting_id)),
+        )
+    except SpeechUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        if temp_path:
+            temp_path.unlink(missing_ok=True)
 
 
 @router.post("/kb/upload", response_model=list[KnowledgeChunkResponse])
@@ -172,4 +203,3 @@ def chunk_to_response(chunk) -> KnowledgeChunkResponse:
         chunk_index=chunk.chunk_index,
         score=chunk.score,
     )
-

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { canAddSegment, connectionErrorMessage } from "./uiState";
+import { labels } from "./i18n";
+import { canAddSegment, canUploadAudio, connectionErrorMessage } from "./uiState";
 
 describe("ui state guards", () => {
   it("prevents add segment when meeting has not loaded", () => {
@@ -15,5 +16,18 @@ describe("ui state guards", () => {
   it("formats backend connection failures as actionable text", () => {
     expect(connectionErrorMessage("Failed to fetch")).toContain("backend");
   });
-});
 
+  it("allows audio upload only with a loaded meeting and selected file", () => {
+    expect(canUploadAudio({ busy: false, meetingLoaded: true, hasFile: true })).toBe(true);
+    expect(canUploadAudio({ busy: false, meetingLoaded: false, hasFile: true })).toBe(false);
+    expect(canUploadAudio({ busy: false, meetingLoaded: true, hasFile: false })).toBe(false);
+    expect(canUploadAudio({ busy: true, meetingLoaded: true, hasFile: true })).toBe(false);
+  });
+
+  it("keeps Chinese UI labels readable", () => {
+    expect(labels.zh.addSegment).toBe("添加片段");
+    expect(labels.zh.uploadAudio).toBe("上传音频");
+    expect(labels.zh.language).toBe("English");
+    expect(labels.en.language).toBe("中文");
+  });
+});
