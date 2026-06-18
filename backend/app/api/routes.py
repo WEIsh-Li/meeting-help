@@ -77,6 +77,15 @@ def add_segment(request: AddSegmentRequest) -> SegmentResponse:
 
 @router.post("/speech/transcribe", response_model=TranscriptionResponse)
 async def transcribe_audio(meeting_id: str = Form(...), file: UploadFile = File(...)) -> TranscriptionResponse:
+    return await _transcribe_audio_file(meeting_id, file)
+
+
+@router.post("/speech/transcribe-chunk", response_model=TranscriptionResponse)
+async def transcribe_audio_chunk(meeting_id: str = Form(...), file: UploadFile = File(...)) -> TranscriptionResponse:
+    return await _transcribe_audio_file(meeting_id, file)
+
+
+async def _transcribe_audio_file(meeting_id: str, file: UploadFile) -> TranscriptionResponse:
     suffix = Path(file.filename or "audio").suffix or ".wav"
     temp_path: Path | None = None
     try:

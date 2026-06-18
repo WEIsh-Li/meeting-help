@@ -18,7 +18,8 @@ body {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
@@ -115,6 +116,31 @@ h2 {
   flex-wrap: wrap;
 }
 
+.source-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  border: 1px solid #c9d3df;
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: #243243;
+  background: #ffffff;
+}
+
+.source-control span {
+  color: #657386;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.source-control select {
+  min-width: 108px;
+  border: 0;
+  color: #243243;
+  background: transparent;
+}
+
 .upload-button input {
   display: none;
 }
@@ -165,6 +191,20 @@ h2 {
   color: #526174;
   background: #f6f8fa;
   font-size: 13px;
+}
+
+.status-stack {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.status-pill.live {
+  border-color: #146b58;
+  color: #146b58;
+  background: #edf7f3;
 }
 
 .segments {

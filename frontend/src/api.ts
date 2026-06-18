@@ -49,6 +49,15 @@ export const api = {
       body: form
     });
   },
+  transcribeAudioChunk: (meetingId: string, file: File) => {
+    const form = new FormData();
+    form.append("meeting_id", meetingId);
+    form.append("file", file);
+    return request<TranscriptionResult>("/api/speech/transcribe-chunk", {
+      method: "POST",
+      body: form
+    });
+  },
   generateReply: (meetingId: string) =>
     request<{ reply: Reply; submitted_segment_ids: string[]; meeting: Meeting }>("/api/ai/generate-reply", {
       method: "POST",

@@ -1,9 +1,9 @@
-import { Clipboard, FileText, Globe2, Mic, Pause, Play, Plus, RotateCcw, Send, Trash2, Upload } from "lucide-react";
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { Clipboard, FileText, Globe2, Mic, MonitorSpeaker, Pause, Play, Plus, Radio, RotateCcw, Send, Trash2, Upload } from "lucide-react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api";
 import { labels } from "./i18n";
-import type { KnowledgeChunk, Lang, Meeting, Reply, Segment } from "./types";
-import { canAddSegment, canUploadAudio, connectionErrorMessage } from "./uiState";
+import type { KnowledgeChunk, Lang, LiveAudioSource, Meeting, Reply, Segment } from "./types";
+import { canAddSegment, canStartLiveTranscription, canUploadAudio, connectionErrorMessage } from "./uiState";
 
 function App() {
   const [lang, setLang] = useState<Lang>("zh");
@@ -13,8 +13,13 @@ function App() {
   const [speaker, setSpeaker] = useState("Other");
   const [knowledge, setKnowledge] = useState<KnowledgeChunk[]>([]);
   const [busy, setBusy] = useState(false);
+  const [liveSource, setLiveSource] = useState<LiveAudioSource>("system");
+  const [isLiveTranscribing, setIsLiveTranscribing] = useState(false);
+  const [liveBusy, setLiveBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const t = labels[lang];
 
   const pendingCount = useMemo(
@@ -25,6 +30,10 @@ function App() {
   useEffect(() => {
     api.currentMeeting().then(setMeeting).catch((err) => setError(connectionErrorMessage(err.message, t.backendUnavailable)));
   }, [t.backendUnavailable]);
+
+  useEffect(() => {
+    return () => stopLiveTranscription();
+  }, []);
 
   async function run(action: () => Promise<void>) {
     setBusy(true);
@@ -112,6 +121,78 @@ function App() {
     });
   }
 
+  async function startLiveTranscription() {
+    if (!canStartLiveTranscription({ busy, meetingLoaded: Boolean(meeting), isLiveTranscribing })) {
+      if (!meeting) setError(t.backendUnavailable);
+      return;
+    }
+    try {
+      setError("");
+      const stream = await requestAudioStream(liveSource);
+      const mimeType = preferredAudioMimeType();
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      const meetingId = meeting!.id;
+
+      recorder.ondataavailable = async (event) => {
+        if (!event.data.size) return;
+        setLiveBusy(true);
+        try {
+          const file = new File([event.data], `live-${Date.now()}.webm`, { type: event.data.type || "audio/webm" });
+          const result = await api.transcribeAudioChunk(meetingId, file);
+          setMeeting(result.meeting);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          setError(message.includes("faster-whisper") ? t.speechUnavailable : connectionErrorMessage(message, t.backendUnavailable));
+        } finally {
+          setLiveBusy(false);
+        }
+      };
+
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      recorderRef.current = recorder;
+      streamRef.current = stream;
+      recorder.start(6000);
+      setIsLiveTranscribing(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.audioPermissionDenied);
+      stopLiveTranscription();
+    }
+  }
+
+  function stopLiveTranscription() {
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      recorderRef.current.stop();
+    }
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    recorderRef.current = null;
+    streamRef.current = null;
+    setIsLiveTranscribing(false);
+    setLiveBusy(false);
+  }
+
+  async function requestAudioStream(source: LiveAudioSource): Promise<MediaStream> {
+    if (!navigator.mediaDevices) {
+      throw new Error(t.audioPermissionDenied);
+    }
+    if (source === "microphone") {
+      return navigator.mediaDevices.getUserMedia({ audio: true });
+    }
+    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    if (!stream.getAudioTracks().length) {
+      stream.getTracks().forEach((track) => track.stop());
+      throw new Error(t.audioPermissionDenied);
+    }
+    return stream;
+  }
+
+  function preferredAudioMimeType() {
+    const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
+    return candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) ?? "";
+  }
+
   async function generateReply() {
     if (!meeting) return;
     await run(async () => {
@@ -140,7 +221,7 @@ function App() {
           <div>
             <h1>{t.appName}</h1>
             <p>
-              {meeting?.title ?? t.meeting} · {t.status}: {meeting ? t[meeting.status] : "-"} · {pendingCount} {t.pending}
+              {meeting?.title ?? t.meeting} - {t.status}: {meeting ? t[meeting.status] : "-"} - {pendingCount} {t.pending}
             </p>
           </div>
         </div>
@@ -166,6 +247,30 @@ function App() {
             <Mic size={16} /> {t.uploadAudio}
             <input type="file" accept="audio/*" disabled={busy || !meeting} onChange={uploadAudio} />
           </label>
+          <label className="source-control">
+            <span>{t.liveSource}</span>
+            <select
+              value={liveSource}
+              onChange={(event) => setLiveSource(event.target.value as LiveAudioSource)}
+              disabled={isLiveTranscribing}
+            >
+              <option value="system">{t.system}</option>
+              <option value="microphone">{t.microphone}</option>
+            </select>
+          </label>
+          {isLiveTranscribing ? (
+            <button onClick={stopLiveTranscription}>
+              <Radio size={16} /> {t.stopLive}
+            </button>
+          ) : (
+            <button
+              onClick={startLiveTranscription}
+              disabled={!canStartLiveTranscription({ busy, meetingLoaded: Boolean(meeting), isLiveTranscribing })}
+              title={!meeting ? t.backendUnavailable : undefined}
+            >
+              {liveSource === "system" ? <MonitorSpeaker size={16} /> : <Mic size={16} />} {t.startLive}
+            </button>
+          )}
           <button className="primary" onClick={generateReply} disabled={busy || !meeting || pendingCount === 0}>
             <Send size={16} /> {t.generate}
           </button>
@@ -189,7 +294,12 @@ function App() {
               <h2>{t.transcript}</h2>
               <p>{t.privacyNotice}</p>
             </div>
-            <span className="status-pill">{pendingCount} {t.pending}</span>
+            <div className="status-stack">
+              <span className="status-pill">{pendingCount} {t.pending}</span>
+              <span className={`status-pill ${isLiveTranscribing ? "live" : ""}`}>
+                <Radio size={14} /> {isLiveTranscribing ? t.liveOn : t.liveOff}{liveBusy ? "..." : ""}
+              </span>
+            </div>
           </div>
 
           <div className="segments">
@@ -235,7 +345,7 @@ function App() {
           {!reply && <div className="empty">{t.emptyReply}</div>}
           {reply && (
             <div className="reply-grid">
-              <InfoBlock label={t.intent} value={`${reply.intent} · ${reply.need_response ? "response" : "no response"}`} />
+              <InfoBlock label={t.intent} value={`${reply.intent} - ${reply.need_response ? "response" : "no response"}`} />
               <InfoBlock label={t.understanding} value={reply.summary_cn} />
               <InfoBlock label={t.strategy} value={reply.strategy_cn} />
               <InfoBlock label={t.answerCn} value={reply.answer_cn} />

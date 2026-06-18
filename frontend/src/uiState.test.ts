@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { labels } from "./i18n";
-import { canAddSegment, canUploadAudio, connectionErrorMessage } from "./uiState";
+import { canAddSegment, canStartLiveTranscription, canUploadAudio, connectionErrorMessage } from "./uiState";
 
 describe("ui state guards", () => {
   it("prevents add segment when meeting has not loaded", () => {
@@ -24,9 +24,17 @@ describe("ui state guards", () => {
     expect(canUploadAudio({ busy: true, meetingLoaded: true, hasFile: true })).toBe(false);
   });
 
+  it("starts live transcription only when meeting is loaded and recorder is idle", () => {
+    expect(canStartLiveTranscription({ busy: false, meetingLoaded: true, isLiveTranscribing: false })).toBe(true);
+    expect(canStartLiveTranscription({ busy: false, meetingLoaded: false, isLiveTranscribing: false })).toBe(false);
+    expect(canStartLiveTranscription({ busy: true, meetingLoaded: true, isLiveTranscribing: false })).toBe(false);
+    expect(canStartLiveTranscription({ busy: false, meetingLoaded: true, isLiveTranscribing: true })).toBe(false);
+  });
+
   it("keeps Chinese UI labels readable", () => {
     expect(labels.zh.addSegment).toBe("添加片段");
     expect(labels.zh.uploadAudio).toBe("上传音频");
+    expect(labels.zh.startLive).toBe("开始实时转写");
     expect(labels.zh.language).toBe("English");
     expect(labels.en.language).toBe("中文");
   });

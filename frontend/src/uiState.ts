@@ -10,12 +10,22 @@ export interface UploadAudioState {
   hasFile: boolean;
 }
 
+export interface LiveTranscriptionState {
+  busy: boolean;
+  meetingLoaded: boolean;
+  isLiveTranscribing: boolean;
+}
+
 export function canAddSegment(state: AddSegmentState): boolean {
   return !state.busy && state.meetingLoaded && state.text.trim().length > 0;
 }
 
 export function canUploadAudio(state: UploadAudioState): boolean {
   return !state.busy && state.meetingLoaded && state.hasFile;
+}
+
+export function canStartLiveTranscription(state: LiveTranscriptionState): boolean {
+  return !state.busy && state.meetingLoaded && !state.isLiveTranscribing;
 }
 
 export function connectionErrorMessage(message: string, fallback = "Cannot connect to backend API. Start FastAPI at http://127.0.0.1:8000, then refresh this page."): string {

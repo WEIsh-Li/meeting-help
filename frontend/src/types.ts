@@ -1,4 +1,5 @@
 export type Lang = "zh" | "en";
+export type LiveAudioSource = "microphone" | "system";
 
 export interface Segment {
   id: string;
